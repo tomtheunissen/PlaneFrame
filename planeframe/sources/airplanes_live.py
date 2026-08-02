@@ -1,11 +1,11 @@
 """Fetch raw aircraft data from api.airplanes.live, or from a saved sample."""
 
+from planeframe.units import KM_PER_NM
 import json
 
 import requests
 
 BASE_URL = "https://api.airplanes.live/v2/point"
-KM_PER_NM = 1.852
 MAX_RADIUS_NM = 250
 
 
