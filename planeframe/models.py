@@ -1,8 +1,14 @@
+"""Turn raw source data into Aircraft objects."""
+
 from dataclasses import dataclass
-from planeframe.sources.airplanes_live import load_sample
+
+from planeframe.units import KM_PER_NM, M_PER_FT
+
 
 @dataclass
 class Aircraft:
+    """A single aircraft as reported by a data source."""
+
     icao: str
     callsign: str | None = None
     registration: str | None = None
@@ -12,7 +18,7 @@ class Aircraft:
     on_ground: bool = False
     ground_speed_kt: float | None = None
     track: float | None = None
-    latitude: float| None = None
+    latitude: float | None = None
     longitude: float | None = None
     category: str | None = None
     position_age_s: float | None = None
@@ -20,9 +26,8 @@ class Aircraft:
     bearing: float | None = None
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict) -> "Aircraft":
         """Build an Aircraft from one entry in the API's 'ac' list."""
-
         callsign = data.get("flight", "").strip() or None
 
         alt_baro = data.get("alt_baro")
@@ -51,6 +56,34 @@ class Aircraft:
             bearing=data.get("dir"),
         )
 
+    @property
+    def distance_km(self) -> float | None:
+        """Distance to the observer in kilometres, if known."""
+        if self.distance_nm is None:
+            return None
+        return self.distance_nm * KM_PER_NM
+
+    @property
+    def altitude_m(self) -> int | None:
+        """Barometric altitude in metres, if known."""
+        if self.altitude_ft is None:
+            return None
+        return int(self.altitude_ft * M_PER_FT)
+
+    @property
+    def airline_code(self) -> str | None:
+        """The leading three letters of the callsign.
+
+        For airline flights this is the ICAO operator code (RYR, DLH).
+        For private aircraft the callsign is the registration, so the
+        result is meaningless here and only becomes useful once it is
+        matched against a list of known operators.
+        """
+        if not self.callsign or len(self.callsign) < 4:
+            return None
+        prefix = self.callsign[:3]
+        return prefix if prefix.isalpha() else None
+
 
 def aircraft_from_response(data: dict) -> list[Aircraft]:
     """Convert a full API response into a list of Aircraft objects.
@@ -72,12 +105,27 @@ def aircraft_from_response(data: dict) -> list[Aircraft]:
 
     return aircraft
 
+
+def _fmt(value, spec: str = "", empty: str = "-") -> str:
+    """Format a value, or return a placeholder when it is None."""
+    return format(value, spec) if value is not None else empty
+
+
 if __name__ == "__main__":
     from planeframe.sources.airplanes_live import load_sample
 
     result = load_sample("data/samples/20260802-192448.json")
     planes = aircraft_from_response(result)
 
-    print(f"{len(planes)} aircraft parsed")
+    print(f"{len(planes)} aircraft parsed\n")
+    print(f"{'CALLSIGN':<10} {'TYPE':<6} {'OPER':<5} {'ALT FT':>7} {'KM':>7}")
+    print("-" * 40)
+
     for plane in planes:
-        print(f"{plane.callsign or '-':<10} {plane.type_code or '-':<6} {plane.altitude_ft or '-'}")
+        print(
+            f"{_fmt(plane.callsign):<10} "
+            f"{_fmt(plane.type_code):<6} "
+            f"{_fmt(plane.airline_code):<5} "
+            f"{_fmt(plane.altitude_ft):>7} "
+            f"{_fmt(plane.distance_km, '.1f'):>7}"
+        )
