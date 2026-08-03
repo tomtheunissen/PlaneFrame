@@ -18,7 +18,7 @@ hardware yet.
 | `sources/airplanes_live` | working |
 | `models` | working |
 | `units` | working |
-| `filters` | next |
+| `filters` | in progress |
 | `imagery`, `palette`, `render` | not started |
 | `schedule` | not started |
 | `state`, `notify` | not started |
