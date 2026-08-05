@@ -3,6 +3,43 @@
 from planeframe.models import Aircraft
 
 
+def _normalise(value: str | None) -> str:
+    """Strip a callsign or registration down to comparable characters.
+
+    'OO-FNG' and 'OOFNG  ' both become 'OOFNG', so the two can be
+    compared directly. A missing value becomes an empty string, which
+    saves every caller from checking for None.
+    """
+    if not value:
+        return ""
+    return value.upper().replace("-", "").replace(" ", "")
+
+
+def is_airline_flight(plane: Aircraft) -> bool:
+    """Decide whether a single aircraft is an airline flight.
+
+    Private aircraft transmit their registration as the callsign, so a
+    match between the two means this is not an airline flight.
+
+    Known gap: an aircraft with a callsign but no registration cannot be
+    compared and slips through. The operator list closes that hole.
+    """
+    callsign = _normalise(plane.callsign)
+    if not callsign:
+        return False
+
+    registration = _normalise(plane.registration)
+    if registration and callsign == registration:
+        return False
+
+    return True
+
+
+def keep_airline_flights(aircraft: list[Aircraft]) -> list[Aircraft]:
+    """Keep only airline traffic."""
+    return [plane for plane in aircraft if is_airline_flight(plane)]
+
+
 def remove_grounded(aircraft: list[Aircraft]) -> list[Aircraft]:
     """Drop aircraft that are on the ground."""
     return [plane for plane in aircraft if not plane.on_ground]
@@ -58,9 +95,11 @@ def select_for_display(
 ) -> list[Aircraft]:
     """Run the full pipeline from raw aircraft to what the frame shows.
 
-    Filtering happens before sorting so the sort works on the smallest
-    possible list.
+    Airline filtering runs first because it removes the most aircraft,
+    and filtering happens before sorting so the sort works on the
+    smallest possible list.
     """
+    aircraft = keep_airline_flights(aircraft)
     aircraft = remove_grounded(aircraft)
     aircraft = remove_unusable_position(aircraft)
     aircraft = remove_old_position(aircraft, max_age_s)
@@ -79,6 +118,7 @@ if __name__ == "__main__":
     print(f"{len(planes):>3} before filtering")
 
     steps = [
+        ("airline only", keep_airline_flights),
         ("grounded", remove_grounded),
         ("no position", remove_unusable_position),
         ("stale position", remove_old_position),
