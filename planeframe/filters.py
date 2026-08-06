@@ -1,6 +1,32 @@
 """Select and order the aircraft that should end up on the display."""
 
+import csv
+from functools import lru_cache
+
 from planeframe.models import Aircraft
+
+AIRLINES_PATH = "data/airlines.csv"
+MISSING_VALUES = {"N/A", r"\N", ""}
+
+
+@lru_cache(maxsize=1)
+def airlines_from_csv(path: str = AIRLINES_PATH) -> dict[str, str]:
+    """Map ICAO operator codes to airline names.
+
+    Reads the OpenFlights airlines snapshot, which has no header row and
+    uses \\N for missing values. Cached, so the file is read once no
+    matter how often this is called.
+    """
+    airlines = {}
+    with open(path, encoding="utf-8") as handle:
+        for row in csv.reader(handle):
+            if len(row) < 5:
+                continue
+            code = row[4]
+            if code in MISSING_VALUES:
+                continue
+            airlines[code] = row[1]
+    return airlines
 
 
 def _normalise(value: str | None) -> str:
@@ -113,6 +139,7 @@ if __name__ == "__main__":
     from planeframe.models import aircraft_from_response
     from planeframe.sources.airplanes_live import load_sample
 
+    airlines_from_csv()
     result = load_sample("data/samples/20260802-192448.json")
     planes = aircraft_from_response(result)
     print(f"{len(planes):>3} before filtering")
