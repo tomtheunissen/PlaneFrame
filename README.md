@@ -15,10 +15,10 @@ hardware yet.
 
 | Component | State |
 |---|---|
-| `sources/airplanes_live` | working |
-| `models` | working |
-| `units` | working |
-| `filters` | working |
+| `sources/airplanes_live` | done |
+| `models` | done |
+| `units` | done |
+| `filters` | done |
 | `imagery`, `palette`, `render` | not started |
 | `schedule` | not started |
 | `state`, `notify` | not started |
