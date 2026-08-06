@@ -90,6 +90,12 @@ Parse a saved sample into aircraft objects:
 python -m planeframe.models
 ```
 
+Run the full selection pipeline against a sample:
+
+```bash
+python -m planeframe.filters
+```
+
 Modules are run with `-m` from the project root so package imports resolve
 correctly.
 
@@ -103,22 +109,36 @@ a different aircraft happening to fly past.
 Worth collecting: a busy afternoon, a quiet night, an aircraft on the
 ground, and any response that once caused a bug.
 
-## Data source
+Samples are deliberately kept out of version control. Every response
+contains a bearing and distance to the observer for each aircraft, which
+together pin down the observer's position quite precisely.
 
-[airplanes.live](https://airplanes.live) — no API key required, one request
-per second, non-commercial use.
+## Data sources
+
+**Flight data:** [airplanes.live](https://airplanes.live). No API key
+required, one request per second, non-commercial use only.
+
+**Airline data:** [OpenFlights](https://openflights.org/data.php), used
+under the [Open Database License (ODbL)
+1.0](https://opendatacommons.org/licenses/odbl/1-0/). The `airlines.dat`
+snapshot in `data/` is unmodified. Note that the airline table has not been
+maintained in years; it is good enough to recognise an operator code, less
+good as a source of current airline names.
 
 The `sources/` package is the only part of the codebase that knows where
-data comes from. Adding a local RTL-SDR receiver running dump1090 later
-means adding one module there, with nothing else changing.
+flight data comes from. Adding a local RTL-SDR receiver running dump1090
+later means adding one module there, with nothing else changing.
 
 ## Filtering
 
 Only airline traffic is shown. The strongest signal separating airline
 flights from private aircraft is that private callsigns are simply the
 registration, while airline callsigns are an ICAO operator code plus a
-flight number. Gliders and light aircraft dominate the local airspace on a
-summer afternoon and would otherwise fill the frame.
+flight number. Aircraft with a callsign but no registration cannot be
+compared that way, so the operator list closes the gap.
+
+Gliders and light aircraft dominate the local airspace on a summer
+afternoon and would otherwise fill the frame.
 
 ## Illustrations
 
@@ -136,6 +156,10 @@ than a 737.
 Flat colour is a deliberate choice. Spectra 6 uses six primaries with
 waveform-level dithering, so photographs are possible but sky gradients
 dither into visible noise. Flat shapes with hard edges quantise cleanly.
+
+Note on licensing: aircraft photographs are copyrighted by the photographer
+and are not redistributable. Only self-drawn or openly licensed artwork
+belongs in this repository.
 
 ## Refresh routines
 
@@ -176,7 +200,8 @@ planeframe/
 ├── data/
 │   ├── settings.json
 │   ├── routines.json
-│   └── samples/            saved API responses
+│   ├── airlines.dat        OpenFlights snapshot
+│   └── samples/            saved API responses, not in version control
 └── output/                 rendered images
 ```
 
@@ -201,4 +226,7 @@ replace them within a couple of weeks of running.
 
 ## Licence
 
-Not decided yet.
+MIT. See [LICENSE](LICENSE).
+
+The bundled OpenFlights airline data is covered separately by ODbL 1.0, as
+described under Data sources.
