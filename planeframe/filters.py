@@ -43,22 +43,36 @@ def _normalise(value: str | None) -> str:
 
 def is_airline_flight(plane: Aircraft) -> bool:
     """Decide whether a single aircraft is an airline flight.
-
+ 
     Private aircraft transmit their registration as the callsign, so a
-    match between the two means this is not an airline flight.
-
-    Known gap: an aircraft with a callsign but no registration cannot be
-    compared and slips through. The operator list closes that hole.
+    match between the two is hard evidence that this is not an airline
+    flight. Where no registration is reported there is nothing to
+    compare against, and the operator list decides instead.
+ 
+    The list is used only as a fallback because the OpenFlights snapshot
+    is years old. Requiring a match for every aircraft would silently
+    drop newer operators.
     """
     callsign = _normalise(plane.callsign)
     if not callsign:
         return False
-
+ 
     registration = _normalise(plane.registration)
-    if registration and callsign == registration:
-        return False
-
-    return True
+    if registration:
+        return callsign != registration
+ 
+    return plane.airline_code in airlines_from_csv()
+ 
+ 
+def airline_name(plane: Aircraft) -> str | None:
+    """Look up the operator name behind a callsign, if it is known.
+ 
+    Turns DLH into Lufthansa. Returns None for private aircraft and for
+    operators missing from the snapshot.
+    """
+    if not plane.airline_code:
+        return None
+    return airlines_from_csv().get(plane.airline_code)
 
 
 def keep_airline_flights(aircraft: list[Aircraft]) -> list[Aircraft]:
