@@ -6,4 +6,5 @@ venv/
 output/
 data/state.json
 data/samples/
+data/logs/
 .DS_Store
