@@ -119,7 +119,7 @@ def remove_too_far(aircraft: list[Aircraft], max_distance_km: float = 40) -> lis
 
 
 def keep_large_aircraft(aircraft: list[Aircraft]) -> list[Aircraft]:
-    """Only keep planes from allowed categories (large aircraft)."""
+    """Only keep planes from allowed categories and remove planes without a category."""
     return [plane for plane in aircraft if plane.category in ALLOWED_CATEGORIES]
 
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         ("stale position", remove_old_position),
         ("no distance", remove_no_distance),
         ("too far", remove_too_far),
-        ("keep arlines", keep_large_aircraft),
+        ("keep airlines", keep_large_aircraft),
         ("sorted", sort_by_distance),
         ("limited", take_nearest),
     ]
