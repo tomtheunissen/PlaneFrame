@@ -161,7 +161,7 @@ if __name__ == "__main__":
     from planeframe.sources.airplanes_live import load_sample
 
     airlines_from_csv()
-    result = load_sample("data/samples/20260802-192448.json")
+    result = load_sample("data/samples/20260808-163007.json")
     planes = aircraft_from_response(result)
     print(f"{len(planes):>3} before filtering")
 
