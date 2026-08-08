@@ -4,14 +4,14 @@ A framed colour e-ink display showing which aircraft are currently overhead,
 drawn as illustrations rather than a list.
 
 A server fetches live flight data, looks up an illustration for each
-aircraft, renders a 1600x1200 image, and a battery-powered ESP32 wakes every
-ten minutes to pull that image onto a 13.3" E Ink Spectra 6 panel. The frame
-hangs on the wall and reads as a print, not as a screen.
+aircraft, renders a 1200x1600 image, and a battery-powered ESP32 wakes every
+ten minutes to pull that image onto a 13.3" E Ink Spectra 6 panel mounted in
+portrait. The frame hangs on the wall and reads as a print, not as a screen.
 
 ## Status
 
-Early development. The data pipeline is taking shape; nothing runs on
-hardware yet.
+Early development. The data pipeline is complete; nothing runs on hardware
+yet.
 
 | Component | State |
 |---|---|
@@ -19,7 +19,8 @@ hardware yet.
 | `models` | done |
 | `units` | done |
 | `filters` | done |
-| `imagery`, `palette`, `render` | not started |
+| `render` | in progress |
+| `imagery`, `palette` | not started |
 | `schedule` | not started |
 | `state`, `notify` | not started |
 | `web` | not started |
@@ -96,6 +97,12 @@ Run the full selection pipeline against a sample:
 python -m planeframe.filters
 ```
 
+Measure local traffic over time:
+
+```bash
+python -m tools.traffic_log --minutes 180 --interval 600
+```
+
 Modules are run with `-m` from the project root so package imports resolve
 correctly.
 
@@ -120,10 +127,15 @@ required, one request per second, non-commercial use only.
 
 **Airline data:** [OpenFlights](https://openflights.org/data.php), used
 under the [Open Database License (ODbL)
-1.0](https://opendatacommons.org/licenses/odbl/1-0/). The `airlines.dat`
-snapshot in `data/` is unmodified. Note that the airline table has not been
+1.0](https://opendatacommons.org/licenses/odbl/1-0/). The snapshot in
+`data/airlines.csv` is unmodified. Note that the airline table has not been
 maintained in years; it is good enough to recognise an operator code, less
 good as a source of current airline names.
+
+**Typeface:** [Inter](https://rsms.me/inter) by Rasmus Andersson, licensed
+under the [SIL Open Font License
+1.1](https://openfontlicense.org). The licence text is included alongside
+the font files in `assets/fonts/`.
 
 The `sources/` package is the only part of the codebase that knows where
 flight data comes from. Adding a local RTL-SDR receiver running dump1090
@@ -131,14 +143,23 @@ later means adding one module there, with nothing else changing.
 
 ## Filtering
 
-Only airline traffic is shown. The strongest signal separating airline
-flights from private aircraft is that private callsigns are simply the
-registration, while airline callsigns are an ICAO operator code plus a
-flight number. Aircraft with a callsign but no registration cannot be
-compared that way, so the operator list closes the gap.
+Only large airline traffic is shown, decided by two independent signals.
 
-Gliders and light aircraft dominate the local airspace on a summer
-afternoon and would otherwise fill the frame.
+**Callsign against registration.** Private aircraft transmit their
+registration as the callsign, so a match between the two is strong evidence
+this is not an airline flight. Where no registration is reported, an
+operator code list decides instead.
+
+**Emitter category.** The ADS-B category field reports a mass class.
+Anything outside A2 to A5 is dropped, which excludes light aircraft,
+gliders and helicopters. A missing category is also dropped: in practice
+every airliner reports one, while aircraft found through multilateration
+generally do not.
+
+The second signal exists because the first can be defeated by bad data. One
+observed ultralight transmitted a callsign that did not match its own
+registration, presumably mistyped, and passed the first test. Its category
+was A1, so the second test caught it.
 
 ## Illustrations
 
@@ -174,8 +195,11 @@ device never needs a calendar of its own.
 | away | weekdays 08:30 to 17:00 | 60 min |
 | holiday | date range, highest priority | off |
 
-Combined with skipping refreshes when the rendered image has not changed,
-this is what turns roughly eight weeks of battery life into roughly twenty.
+Refreshes are also skipped when the rendered image has not changed. That
+saving is smaller than it looks: an hour of measurement at one-minute
+intervals showed the displayed aircraft changing in 87% of rounds, so
+during the day almost every wake means a full refresh. The saving is real
+at night and during quiet hours.
 
 ## Project layout
 
@@ -194,13 +218,15 @@ planeframe/
 │   ├── notify.py           battery and silence alerts
 │   └── sources/            data sources
 ├── web/                    FastAPI service, settings and routines forms
+├── tools/                  measurement scripts, not part of the product
 ├── assets/
-│   ├── fonts/
+│   ├── fonts/              Inter, with its OFL licence text
 │   └── aircraft/           illustrations
 ├── data/
 │   ├── settings.json
 │   ├── routines.json
-│   ├── airlines.dat        OpenFlights snapshot
+│   ├── airlines.csv        OpenFlights snapshot
+│   ├── logs/               traffic measurements, not in version control
 │   └── samples/            saved API responses, not in version control
 └── output/                 rendered images
 ```
@@ -211,14 +237,16 @@ Planned, not yet built. No soldering required if ordered in these variants.
 
 | Part | Note |
 |---|---|
-| 13.3" E Ink Spectra 6, 1600x1200 | designed for signage; full refresh 25-35 s |
+| 13.3" E Ink Spectra 6, 1600x1200 | mounted in portrait; full refresh 25-35 s |
 | ESP32-S3 e-paper driver board | sold as a kit with the panel |
 | LiPo 10000 mAh | charges over USB-C at roughly 500 mA, so expect a long charge |
 | Frame with depth, glass removed | e-ink is reflective; glass ruins the paper look |
 
 Rough power budget: about 1.0 mAh per full refresh, dominated by the 30
 seconds the panel spends sorting its pigment particles. A skipped refresh
-costs about a fifth of that.
+costs about a fifth of that. At ten-minute intervals with a night pause and
+a weekday away window, that works out to somewhere around three to four
+months per charge.
 
 These figures are estimates with meaningful uncertainty. The device reports
 its own battery voltage on every wake, so the real consumption curve will
@@ -228,5 +256,5 @@ replace them within a couple of weeks of running.
 
 MIT. See [LICENSE](LICENSE).
 
-The bundled OpenFlights airline data is covered separately by ODbL 1.0, as
-described under Data sources.
+The bundled OpenFlights data and the Inter typeface are covered by their own
+licences, as described under Data sources.
