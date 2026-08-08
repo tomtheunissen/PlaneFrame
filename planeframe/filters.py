@@ -7,6 +7,7 @@ from planeframe.models import Aircraft
 
 AIRLINES_PATH = "data/airlines.csv"
 MISSING_VALUES = {"N/A", r"\N", ""}
+ALLOWED_CATEGORIES = {"A2", "A3", "A4", "A5"}
 
 
 @lru_cache(maxsize=1)
@@ -117,6 +118,11 @@ def remove_too_far(aircraft: list[Aircraft], max_distance_km: float = 40) -> lis
     return [plane for plane in aircraft if plane.distance_km <= max_distance_km]
 
 
+def keep_large_aircraft(aircraft: list[Aircraft]) -> list[Aircraft]:
+    """Only keep planes from allowed categories (large aircraft)."""
+    return [plane for plane in aircraft if plane.category in ALLOWED_CATEGORIES]
+
+
 def sort_by_distance(aircraft: list[Aircraft]) -> list[Aircraft]:
     """Order aircraft from nearest to furthest."""
     return sorted(aircraft, key=lambda plane: plane.distance_km)
@@ -145,6 +151,7 @@ def select_for_display(
     aircraft = remove_old_position(aircraft, max_age_s)
     aircraft = remove_no_distance(aircraft)
     aircraft = remove_too_far(aircraft, max_distance_km)
+    aircraft = keep_large_aircraft(aircraft)
     aircraft = sort_by_distance(aircraft)
     return take_nearest(aircraft, limit)
 
@@ -165,6 +172,7 @@ if __name__ == "__main__":
         ("stale position", remove_old_position),
         ("no distance", remove_no_distance),
         ("too far", remove_too_far),
+        ("keep arlines", keep_large_aircraft),
         ("sorted", sort_by_distance),
         ("limited", take_nearest),
     ]
