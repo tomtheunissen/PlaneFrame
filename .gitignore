@@ -7,4 +7,5 @@ output/
 data/state.json
 data/samples/
 data/logs/
+assets/aircraft
 .DS_Store
