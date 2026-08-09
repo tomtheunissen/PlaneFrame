@@ -1,13 +1,16 @@
 """Select and order the aircraft that should end up on the display."""
 
 import csv
-from functools import lru_cache
+from collections.abc import Callable
+from functools import lru_cache, partial
 
 from planeframe.models import Aircraft
 
 AIRLINES_PATH = "data/airlines.csv"
 MISSING_VALUES = {"N/A", r"\N", ""}
 ALLOWED_CATEGORIES = {"A2", "A3", "A4", "A5"}
+
+Step = tuple[str, Callable[[list[Aircraft]], list[Aircraft]]]
 
 
 @lru_cache(maxsize=1)
@@ -44,12 +47,12 @@ def _normalise(value: str | None) -> str:
 
 def is_airline_flight(plane: Aircraft) -> bool:
     """Decide whether a single aircraft is an airline flight.
- 
+
     Private aircraft transmit their registration as the callsign, so a
     match between the two is hard evidence that this is not an airline
     flight. Where no registration is reported there is nothing to
     compare against, and the operator list decides instead.
- 
+
     The list is used only as a fallback because the OpenFlights snapshot
     is years old. Requiring a match for every aircraft would silently
     drop newer operators.
@@ -57,17 +60,17 @@ def is_airline_flight(plane: Aircraft) -> bool:
     callsign = _normalise(plane.callsign)
     if not callsign:
         return False
- 
+
     registration = _normalise(plane.registration)
     if registration:
         return callsign != registration
- 
+
     return plane.airline_code in airlines_from_csv()
- 
- 
+
+
 def airline_name(plane: Aircraft) -> str | None:
     """Look up the operator name behind a callsign, if it is known.
- 
+
     Turns DLH into Lufthansa. Returns None for private aircraft and for
     operators missing from the snapshot.
     """
@@ -119,12 +122,17 @@ def remove_too_far(aircraft: list[Aircraft], max_distance_km: float = 40) -> lis
 
 
 def keep_large_aircraft(aircraft: list[Aircraft]) -> list[Aircraft]:
-    """Only keep planes from allowed categories and remove planes without a category."""
+    """Keep only aircraft in the airliner mass classes.
+
+    A missing category is dropped as well. In practice every airliner
+    reports one, while aircraft found through multilateration generally
+    do not, so absence is itself a signal.
+    """
     return [plane for plane in aircraft if plane.category in ALLOWED_CATEGORIES]
 
 
 def remove_no_type_code(aircraft: list[Aircraft]) -> list[Aircraft]:
-    """Drop aircraft without a type_code"""
+    """Drop aircraft that do not report a type, since nothing can be drawn."""
     return [plane for plane in aircraft if plane.type_code]
 
 
@@ -138,56 +146,60 @@ def take_nearest(aircraft: list[Aircraft], limit: int = 3) -> list[Aircraft]:
     return aircraft[:limit]
 
 
+def pipeline(
+    max_distance_km: float = 40,
+    max_age_s: float = 30,
+    limit: int = 3,
+) -> list[Step]:
+    """Describe the full selection pipeline as an ordered list of steps.
+
+    This is the single source of truth for what runs and in what order.
+    Callers that need the end result use select_for_display; callers that
+    want to watch the list shrink (the CLI, the traffic logger) walk this
+    list themselves. Adding a filter here makes it appear everywhere.
+
+    Airline filtering runs first because it removes the most aircraft,
+    and all filtering happens before sorting so the sort works on the
+    smallest possible list.
+    """
+    return [
+        ("airline only", keep_airline_flights),
+        ("airborne", remove_grounded),
+        ("has position", remove_unusable_position),
+        ("fresh position", partial(remove_old_position, max_age_s=max_age_s)),
+        ("has distance", remove_no_distance),
+        ("in range", partial(remove_too_far, max_distance_km=max_distance_km)),
+        ("large enough", keep_large_aircraft),
+        ("has type", remove_no_type_code),
+        ("sorted", sort_by_distance),
+        ("limited", partial(take_nearest, limit=limit)),
+    ]
+
+
 def select_for_display(
     aircraft: list[Aircraft],
     max_distance_km: float = 40,
     max_age_s: float = 30,
     limit: int = 3,
 ) -> list[Aircraft]:
-    """Run the full pipeline from raw aircraft to what the frame shows.
-
-    Airline filtering runs first because it removes the most aircraft,
-    and filtering happens before sorting so the sort works on the
-    smallest possible list.
-    """
-    aircraft = keep_airline_flights(aircraft)
-    aircraft = remove_grounded(aircraft)
-    aircraft = remove_unusable_position(aircraft)
-    aircraft = remove_old_position(aircraft, max_age_s)
-    aircraft = remove_no_distance(aircraft)
-    aircraft = remove_too_far(aircraft, max_distance_km)
-    aircraft = keep_large_aircraft(aircraft)
-    aircraft = remove_no_type_code(aircraft)
-    aircraft = sort_by_distance(aircraft)
-    return take_nearest(aircraft, limit)
+    """Run the full pipeline from raw aircraft to what the frame shows."""
+    for _label, step in pipeline(max_distance_km, max_age_s, limit):
+        aircraft = step(aircraft)
+    return aircraft
 
 
 if __name__ == "__main__":
     from planeframe.models import aircraft_from_response
     from planeframe.sources.airplanes_live import load_sample
 
-    airlines_from_csv()
     result = load_sample("data/samples/20260808-163007.json")
     planes = aircraft_from_response(result)
     print(f"{len(planes):>3} before filtering")
 
-    steps = [
-        ("airline only", keep_airline_flights),
-        ("grounded", remove_grounded),
-        ("no position", remove_unusable_position),
-        ("stale position", remove_old_position),
-        ("no distance", remove_no_distance),
-        ("too far", remove_too_far),
-        ("large enough", keep_large_aircraft),
-        ("no type", remove_no_type_code),
-        ("sorted", sort_by_distance),
-        ("limited", take_nearest),
-    ]
-
-    for label, step in steps:
+    for label, step in pipeline():
         planes = step(planes)
         print(f"{len(planes):>3} after {label}")
 
     print()
     for plane in planes:
-        print(f"{plane.callsign:<10} {plane.distance_km:.1f} km")
+        print(f"{plane.callsign:<10} {plane.type_code:<5} {plane.distance_km:.1f} km")
