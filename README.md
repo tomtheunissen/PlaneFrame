@@ -19,7 +19,7 @@ yet.
 | `models` | done |
 | `units` | done |
 | `filters` | done |
-| `render` | done |
+| `render` | in progress |
 | `imagery`, `palette` | in progress |
 | `schedule` | not started |
 | `state`, `notify` | not started |
