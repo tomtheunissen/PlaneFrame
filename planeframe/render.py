@@ -25,14 +25,14 @@ def draw_text(img, planes):
 
 def draw_plane(img, planes):
     draw = ImageDraw.Draw(img)
-    coord_y = 300
+    coord_y = 250
 
     for plane in planes:
         type_path = image_for(plane)
         plane_img = Image.open(type_path).convert("RGBA")
 
         w, h = plane_img.size
-        new_h = 200
+        new_h = 220
         new_w = int(w * (new_h / h))
 
         plane_img = plane_img.resize((new_w, new_h))
