@@ -123,6 +123,11 @@ def keep_large_aircraft(aircraft: list[Aircraft]) -> list[Aircraft]:
     return [plane for plane in aircraft if plane.category in ALLOWED_CATEGORIES]
 
 
+def remove_no_type_code(aircraft: list[Aircraft]) -> list[Aircraft]:
+    """Drop aircraft without a type_code"""
+    return [plane for plane in aircraft if plane.type_code]
+
+
 def sort_by_distance(aircraft: list[Aircraft]) -> list[Aircraft]:
     """Order aircraft from nearest to furthest."""
     return sorted(aircraft, key=lambda plane: plane.distance_km)
@@ -152,6 +157,7 @@ def select_for_display(
     aircraft = remove_no_distance(aircraft)
     aircraft = remove_too_far(aircraft, max_distance_km)
     aircraft = keep_large_aircraft(aircraft)
+    aircraft = remove_no_type_code(aircraft)
     aircraft = sort_by_distance(aircraft)
     return take_nearest(aircraft, limit)
 
@@ -172,7 +178,8 @@ if __name__ == "__main__":
         ("stale position", remove_old_position),
         ("no distance", remove_no_distance),
         ("too far", remove_too_far),
-        ("keep airlines", keep_large_aircraft),
+        ("large enough", keep_large_aircraft),
+        ("no type", remove_no_type_code),
         ("sorted", sort_by_distance),
         ("limited", take_nearest),
     ]
