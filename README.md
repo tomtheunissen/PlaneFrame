@@ -19,8 +19,8 @@ yet.
 | `models` | done |
 | `units` | done |
 | `filters` | done |
-| `render` | in progress |
-| `imagery`, `palette` | not started |
+| `render` | done |
+| `imagery`, `palette` | in progress |
 | `schedule` | not started |
 | `state`, `notify` | not started |
 | `web` | not started |
