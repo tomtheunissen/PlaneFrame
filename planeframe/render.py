@@ -14,7 +14,7 @@ def create_canvas():
 
 def draw_text(img, planes):
     draw = ImageDraw.Draw(img)
-    font1 = ImageFont.truetype(SEMIBOLD,  70)
+    font1 = ImageFont.truetype(SEMIBOLD, 55)
     coord_y = 400
 
     for plane in planes:
