@@ -4,6 +4,7 @@ import csv
 from collections.abc import Callable
 from functools import lru_cache, partial
 
+from planeframe.imagery import keep_drawable
 from planeframe.models import Aircraft
 
 AIRLINES_PATH = "data/airlines.csv"
@@ -150,6 +151,7 @@ def pipeline(
     max_distance_km: float = 40,
     max_age_s: float = 30,
     limit: int = 3,
+    require_image: bool = True,
 ) -> list[Step]:
     """Describe the full selection pipeline as an ordered list of steps.
 
@@ -161,8 +163,12 @@ def pipeline(
     Airline filtering runs first because it removes the most aircraft,
     and all filtering happens before sorting so the sort works on the
     smallest possible list.
+
+    Set require_image to False while the illustration library is still
+    small, otherwise almost everything is filtered out and the layout
+    cannot be tested.
     """
-    return [
+    steps: list[Step] = [
         ("airline only", keep_airline_flights),
         ("airborne", remove_grounded),
         ("has position", remove_unusable_position),
@@ -171,9 +177,17 @@ def pipeline(
         ("in range", partial(remove_too_far, max_distance_km=max_distance_km)),
         ("large enough", keep_large_aircraft),
         ("has type", remove_no_type_code),
+    ]
+
+    if require_image:
+        steps.append(("drawable", keep_drawable))
+
+    steps += [
         ("sorted", sort_by_distance),
         ("limited", partial(take_nearest, limit=limit)),
     ]
+
+    return steps
 
 
 def select_for_display(
@@ -181,9 +195,10 @@ def select_for_display(
     max_distance_km: float = 40,
     max_age_s: float = 30,
     limit: int = 3,
+    require_image: bool = True,
 ) -> list[Aircraft]:
     """Run the full pipeline from raw aircraft to what the frame shows."""
-    for _label, step in pipeline(max_distance_km, max_age_s, limit):
+    for _label, step in pipeline(max_distance_km, max_age_s, limit, require_image):
         aircraft = step(aircraft)
     return aircraft
 
@@ -193,13 +208,17 @@ if __name__ == "__main__":
     from planeframe.sources.airplanes_live import load_sample
 
     result = load_sample("data/samples/20260808-163007.json")
-    planes = aircraft_from_response(result)
-    print(f"{len(planes):>3} before filtering")
+    original = aircraft_from_response(result)
 
-    for label, step in pipeline():
-        planes = step(planes)
-        print(f"{len(planes):>3} after {label}")
+    for require_image in (False, True):
+        planes = original
+        print(f"require_image={require_image}")
+        print(f"{len(planes):>3} before filtering")
 
-    print()
-    for plane in planes:
-        print(f"{plane.callsign:<10} {plane.type_code:<5} {plane.distance_km:.1f} km")
+        for label, step in pipeline(require_image=require_image):
+            planes = step(planes)
+            print(f"{len(planes):>3} after {label}")
+
+        for plane in planes:
+            print(f"    {plane.callsign:<10} {plane.type_code:<5} {plane.distance_km:.1f} km")
+        print()
