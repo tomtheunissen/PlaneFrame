@@ -3,19 +3,20 @@
 import csv
 from collections.abc import Callable
 from functools import lru_cache, partial
+from pathlib import Path
 
 from planeframe.imagery import keep_drawable
 from planeframe.models import Aircraft
+from planeframe.config import AIRLINES_PATH, ALLOWED_CATEGORIES, SAMPLES
 
-AIRLINES_PATH = "data/airlines.csv"
 MISSING_VALUES = {"N/A", r"\N", ""}
-ALLOWED_CATEGORIES = {"A2", "A3", "A4", "A5"}
+
 
 Step = tuple[str, Callable[[list[Aircraft]], list[Aircraft]]]
 
 
 @lru_cache(maxsize=1)
-def airlines_from_csv(path: str = AIRLINES_PATH) -> dict[str, str]:
+def airlines_from_csv(path: Path = AIRLINES_PATH) -> dict[str, str]:
     """Map ICAO operator codes to airline names.
 
     Reads the OpenFlights airlines snapshot, which has no header row and
@@ -207,7 +208,7 @@ if __name__ == "__main__":
     from planeframe.models import aircraft_from_response
     from planeframe.sources.airplanes_live import load_sample
 
-    result = load_sample("data/samples/20260808-163007.json")
+    result = load_sample(SAMPLES / "20260808-163007.json")
     original = aircraft_from_response(result)
 
     for require_image in (False, True):

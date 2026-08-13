@@ -14,11 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from planeframe.models import Aircraft
-
-ROOT = Path(__file__).resolve().parents[1]
-AIRCRAFT_DIR = ROOT / "assets" / "aircraft"
-LIVERY_IMAGES = AIRCRAFT_DIR / "livery"
-TYPE_IMAGES = AIRCRAFT_DIR / "type"
+from planeframe.config import LIVERY_IMAGES, TYPE_IMAGES
 
 
 def livery_key(plane: Aircraft) -> str | None:

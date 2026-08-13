@@ -1,11 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
+from planeframe.config import ROOT, FONTS, REGULAR, SEMIBOLD, OUTPUT
 
-ROOT = Path(__file__).resolve().parents[1]
-FONTS = ROOT / "assets" / "fonts"
-REGULAR = FONTS / "Inter_18pt-Regular.ttf"
-SEMIBOLD = FONTS / "Inter_18pt-SemiBold.ttf"
-OUTPUT = ROOT / "output"
 
 def create_canvas():
     img = Image.new(mode = "RGB", size = (1200, 1600), color = (186, 226, 245))
