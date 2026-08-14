@@ -149,8 +149,8 @@ def take_nearest(aircraft: list[Aircraft], limit: int = 3) -> list[Aircraft]:
 
 
 def pipeline(
-    max_distance_km: float = 40,
-    max_age_s: float = 30,
+    max_distance_km: int = 40,
+    max_age_s: int = 30,
     limit: int = 3,
     require_image: bool = True,
 ) -> list[Step]:
@@ -193,8 +193,8 @@ def pipeline(
 
 def select_for_display(
     aircraft: list[Aircraft],
-    max_distance_km: float = 40,
-    max_age_s: float = 30,
+    max_distance_km: int = 40,
+    max_age_s: int = 30,
     limit: int = 3,
     require_image: bool = True,
 ) -> list[Aircraft]:
